@@ -2,7 +2,7 @@
 
 ## Introduction
 
-MonLBL est un outil permettant d'analyser des performances d'exécution de code ObjectScript ligne par ligne. Cet utilitaire s'appuie sur le package `%Monitor.System.LineByLine` d'InterSystems IRIS pour collecter des métriques précises sur l'exécution de routines ou de classes.
+MonLBL est un outil permettant d'analyser des performances d'exécution de code ObjectScript ligne par ligne. Cet utilitaire s'appuie sur le package `%Monitor.System.LineByLine` d'InterSystems IRIS pour collecter des métriques précises sur l'exécution de routines, classes ou CSP.
 
 ## Fonctionnalités
 
@@ -16,7 +16,9 @@ En plus des métriques par ligne, MonLBL collecte des statistiques globales :
 - Temps d'exécution total
 - Nombre total de lignes exécutées
 - Nombre total de références globales
-- Temps CPU système et utilisateur
+- Temps CPU système et utilisateur : 
+  * Le temps CPU utilisateur correspond au temps passé par le processeur à exécuter le code de l'application
+  * Le temps CPU système correspond au temps passé par le processeur à exécuter des opérations du système d'exploitation (appels système, gestion mémoire, I/O)
 - Temps de lecture disque
 
 ## Prérequis
@@ -27,14 +29,14 @@ Pour pouvoir monitorer du code avec MonLBL :
 
 ## ⚠️ Mise en garde importante
 
-L'utilisation du monitoring ligne par ligne a un impact très lourd sur les performances du serveur. Il est important de respecter les recommandations suivantes :
+L'utilisation du monitoring ligne par ligne a un impact  sur les performances du serveur. Il est important de respecter les recommandations suivantes :
 
-- N'utilisez cet outil que sur un ensemble limité de code et de processus
-- Évitez son utilisation sur un serveur de production
-- Prévoyez un ralentissement pendant l'exécution du code monitoré (environ 20%)
-- Utilisez de préférence cet outil dans un environnement de développement ou de test isolé
+- N'utilisez cet outil que sur un ensemble limité de code et de processus (idéalement de l'exécution ponctuel dans un terminal) 
+- Évitez son utilisation sur un serveur de production 
+- Utilisez de préférence cet outil dans un environnement de développement ou de test 
 
 Ces précautions sont essentielles pour éviter des problèmes de performance qui pourraient affecter les utilisateurs ou les systèmes en production.
+Sachez que le code monitoré s'exécute environ 15-20% plus lentement que s'il ne l'est pas. 
 
 ## Utilisation
 
@@ -69,7 +71,7 @@ L'utilitaire offre plusieurs options configurables :
 
 ## Exemple d'utilisation avancée
 
-Voici un exemple plus complet inspiré de la classe `dc.codemonitor.Example` :
+Voici un exemple plus complet disponible dans la classe `dc.codemonitor.Example` :
 
 ```objectscript
 ClassMethod MonitorGenerateNumber(parameters As %DynamicObject) As %Status
@@ -90,6 +92,7 @@ ClassMethod MonitorGenerateNumber(parameters As %DynamicObject) As %Status
         Set monitor.autoCompile = $$$YES
         Set monitor.metricsEnabled = $$$YES
         Set monitor.directory = ##class(%File).NormalizeDirectory(##class(%SYS.System).TempDirectory())
+        Set monitor.decimalPointIsComma = $$$YES
 
         // Configuration de la routine à monitorer (forme "int" de la classe)
         // Pour trouver le nom exact de la routine, utilisez la commande :
@@ -125,12 +128,12 @@ ClassMethod MonitorGenerateNumber(parameters As %DynamicObject) As %Status
 Cet exemple montre plusieurs bonnes pratiques importantes :
 - Utilisation d'un bloc Try/Catch pour gérer les erreurs
 - Arrêt systématique du monitoring, même en cas d'erreur
-- Documentation sur la façon de trouver le nom exact de la routine à monitorer
+- Documentation sur la façon de trouver le nom exact de la routine correspondant à une classe à monitorer
 - Paramétrage complet du moniteur
 
 ## Exemple d'utilisation avec des pages CSP
 
-MonLBL permet également de monitorer des pages CSP (Caché Server Pages). Voici un exemple basé sur la classe `dc.codemonitor.ExampleCsp` :
+MonLBL permet également de monitorer des pages CSP. Voici un exemple disponible dans la classe `dc.codemonitor.ExampleCsp` :
 
 ```objectscript
 ClassMethod MonitorCSP(parameters As %DynamicObject = {{}}) As %Status
@@ -148,6 +151,7 @@ ClassMethod MonitorCSP(parameters As %DynamicObject = {{}}) As %Status
         Set monitor.autoCompile = $$$YES
         Set monitor.metricsEnabled = $$$YES
         Set monitor.directory = ##class(%File).NormalizeDirectory(##class(%SYS.System).TempDirectory())
+        Set monitor.decimalPointIsComma = $$$YES
 
         // Pour monitorer une page CSP, on utilise la routine générée
         // Exemple: /csp/user/menu.csp --> classe: csp.menu --> routine: csp.menu.1
@@ -159,6 +163,7 @@ ClassMethod MonitorCSP(parameters As %DynamicObject = {{}}) As %Status
         // Configurer les paramètres de requête si nécessaire
         // Set %request.Data("<param_name>", 1) = <value>
         Set %request.CgiEnvs("SERVER_NAME") = "localhost"
+        Set %request.URL = "/csp/user/menu.csp"
 
         Set %session = ##class(%CSP.Session).%New(1234)
         // Configurer les données de session si nécessaire
@@ -188,6 +193,7 @@ ClassMethod MonitorCSP(parameters As %DynamicObject = {{}}) As %Status
             // Toujours restaurer la sortie et arrêter le monitoring en cas d'erreur
             Do ##class(IORedirect.Redirect).RestoreIO()
             Do monitor.stopMonitoring()
+           
             Throw ex
         }
     }
@@ -224,7 +230,7 @@ USER>d ##class(dc.codemonitor.Example).MonitorGenerateNumber({"number":"100"})
 * Metrics are exported to /usr/irissys/mgr/Temp/dc.codemonitor.DoSomething.1.csv
 * Perf results :
 {
-  "startDateTime":"2025-05-07 21:51:42",
+  "startDateTime":"2025-05-07 18:45:42",
   "systemCPUTime":0,
   "userCPUTime":0,
   "timing":0.000205,
@@ -245,12 +251,12 @@ On peut observer dans cette sortie :
    - Le nombre de références globales
    - Le temps de lecture disque
 
-## Interprétation des résultats
+## Interprétation des résultats CSV
 
-Après l'exécution, des fichiers CSV sont générés dans le répertoire configuré. Ces fichiers contiennent :
+Après l'exécution, des fichiers CSV (1 par routine dans le $ListBuild routines) sont générés dans le répertoire configuré. Ces fichiers contiennent :
 - Le numéro de ligne
 - Les métriques collectées pour chaque ligne
-- Le code source de la ligne
+- Le code source de la ligne (attention si vous n'avez les classes du code à monitoré avec le flag "k", le code source ne sera pas disponible dans le fichier csv)
 
 Voici un exemple du contenu d'un fichier CSV exporté (dc.codemonitor.DoSomething.1.csv) :
 
@@ -273,10 +279,8 @@ Dans ce tableau, nous pouvons analyser :
 - **Time** : Présente le temps d'exécution propre à chaque ligne
 - **TotalTime** : Affiche le temps total incluant les appels à d'autres routines
 
-Ces données peuvent être facilement importées dans un tableur pour analyse approfondie. Les lignes les plus coûteuses en termes de temps ou d'accès aux données peuvent ainsi être identifiées et optimisées.
-  
-De plus, l'utilitaire affiche un résumé des performances globales au format JSON contenant les métriques d'ensemble de l'exécution.
+Ces données peuvent être facilement importées dans un tableur pour analyse approfondie. Les lignes les plus coûteuses en termes de temps ou d'accès aux données peuvent ainsi être facilement identifiées.
 
 ## Conclusion
 
-MonLBL est un outil précieux pour l'analyse de performance et l'optimisation de code ObjectScript. En identifiant précisément les lignes de code qui consomment le plus de ressources, il permet aux développeurs d'optimiser efficacement leurs applications.
+Le monitoring ligne par ligne est un outil précieux pour l'analyse de performance de code ObjectScript.  En identifiant précisément les lignes de code qui consomment le plus de ressources, il permet aux développeurs de gagner beaucoup de temps dans l'analyse de problèmes de lenteurs.  

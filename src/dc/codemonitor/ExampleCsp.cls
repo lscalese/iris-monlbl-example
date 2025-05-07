@@ -27,7 +27,9 @@ ClassMethod MonitorCSP(parameters As %DynamicObject = {{}}) As %Status
         ; just create the objects and set the parameters with the values needed by the CSP page
         Set %request = ##class(%CSP.Request).%New()
         ; Set %request.Data("<param_name>", 1) = <value>
+        
         Set %request.CgiEnvs("SERVER_NAME") = "localhost"
+        Set %request.URL = "/csp/user/menu.csp"
 
         Set %session = ##class(%CSP.Session).%New(1234)
         ;Set %session.Data("<data_name>", 1) = <value>
@@ -41,20 +43,20 @@ ClassMethod MonitorCSP(parameters As %DynamicObject = {{}}) As %Status
             ; Not required, but if you want to avoid write the CSP Page content in the terminal
             ; you can use the IORedirect class to redirect the output to null
             ; this tool is availalbe on OpenExchange, you can install it by using zpm "install io-redirect"
-            ; comment IORedirect line if you don't want to use it
-            Do ##class(IORedirect.Redirect).ToNull() 
+            ; comment IORedirect lines if you don't want to use it
+            ; Do ##class(IORedirect.Redirect).ToNull() 
             
             ; Call the CSP page using the OnPage ClassMethod, juste like this
             Do ##class(csp.menu).OnPage()
             
             ; restore the output
-            Do ##class(IORedirect.Redirect).RestoreIO()
+            ; Do ##class(IORedirect.Redirect).RestoreIO()
 
             Do monitor.stopMonitoring()
         }
         Catch ex {
-            Do ##class(IORedirect.Redirect).RestoreIO()
             Do monitor.stopMonitoring()
+            ; Do ##class(IORedirect.Redirect).RestoreIO()
             Throw ex
         }
 }

@@ -28,7 +28,7 @@ directory.
 		Set url=%request.URL
 	}
 
-	s ^lsc = $lb(%request.CgiEnvs("SERVER_NAME"),url)
+	s ^lsc = $lb(%request.CgiEnvs("SERVER_NAME"),%request.URL)
 
  	Set dir = $$GetFilename^%apiCSP(url)
  	If $$$isWINDOWS Set dir = $translate(dir,"\","/")
