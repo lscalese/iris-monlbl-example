@@ -1,0 +1,17 @@
+USER>d ##class(dc.codemonitor.Example).MonitorGenerateNumber({"number":"100"})
+* Parameters :
+{
+  "number":"100"
+}
+
+* Metrics are exported to /usr/irissys/mgr/Temp/dc.codemonitor.DoSomething.1.csv
+* Perf results :
+{
+  "startDateTime":"2025-05-07 21:51:42",
+  "systemCPUTime":0,
+  "userCPUTime":0,
+  "timing":0.000205,
+  "lines":19,
+  "gloRefs":14,
+  "diskReadInMs":"0"
+}
